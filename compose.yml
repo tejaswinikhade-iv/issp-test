@@ -1,0 +1,12 @@
+services:
+    nextjs:
+        image: 'devops.apps.inspiritvision.com:8443/docker-repo/infra-self-service-portal:0.2.0'
+        # build: .
+        container_name: issp
+        ports:
+            - '3000:3000'
+        restart: unless-stopped
+        volumes:
+            - ~/.aws:/root/.aws:ro
+            - ./config.yml:/app/config.yml:ro
+            - ./crontab.txt:/app/crontab.txt

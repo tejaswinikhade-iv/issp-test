@@ -1,0 +1,218 @@
+#!/usr/bin/env tsx
+
+import {
+	EC2Client,
+	DescribeInstancesCommand,
+	DescribeRegionsCommand,
+	StartInstancesCommand,
+	StopInstancesCommand,
+	TerminateInstancesCommand,
+	Instance,
+} from '@aws-sdk/client-ec2'
+import { fromIni } from '@aws-sdk/credential-provider-ini'
+import { CronExpressionParser } from 'cron-parser'
+import { DateTime } from 'luxon'
+
+const AWS_PROFILES = ['infra', 'product']
+const SCHEDULE_TAG_KEY = 'iv:self-service:schedule'
+const DEFAULT_TIMEZONE = 'Asia/Kolkata'
+
+interface CronRule {
+	cron: string
+	expires: string
+}
+
+interface Schedule {
+	timezone?: string
+	start?: CronRule[]
+	stop?: CronRule[]
+	terminationDate?: string
+}
+
+function getEffectiveTimezone(schedule: Schedule): string {
+	if (!schedule.timezone) {
+		console.log(
+			`  - No timezone provided. Using default: ${DEFAULT_TIMEZONE}`,
+		)
+		return DEFAULT_TIMEZONE
+	}
+	if (!DateTime.local().setZone(schedule.timezone).isValid) {
+		console.warn(
+			`  [WARN] Invalid timezone "${schedule.timezone}". Using default: ${DEFAULT_TIMEZONE}`,
+		)
+		return DEFAULT_TIMEZONE
+	}
+	return schedule.timezone
+}
+
+function isCronDue(cron: string, timezone: string): boolean {
+	try {
+		const interval = CronExpressionParser.parse(cron, {
+			currentDate: new Date(),
+			tz: timezone,
+		})
+		const previousRun = DateTime.fromJSDate(interval.prev().toDate())
+		const now = DateTime.now().setZone(timezone)
+		const minutesSinceLastRun = now.diff(previousRun, 'minutes').minutes
+		return minutesSinceLastRun >= 0 && minutesSinceLastRun < 1
+	} catch (err) {
+		console.error(
+			`  [ERROR] Skipping invalid cron expression "${cron}":`,
+			err,
+		)
+		return false
+	}
+}
+
+async function processInstance(
+	instance: Instance,
+	ec2: EC2Client,
+): Promise<void> {
+	const instanceId = instance.InstanceId!
+	const instanceState = instance.State?.Name
+	console.log(
+		`- Processing Instance: ${instanceId} (State: ${instanceState})`,
+	)
+
+	const scheduleTag = instance.Tags?.find(
+		(tag) => tag.Key === SCHEDULE_TAG_KEY,
+	)?.Value
+	if (!scheduleTag) return
+
+	let schedule: Schedule
+	try {
+		schedule = JSON.parse(scheduleTag)
+	} catch {
+		console.error(
+			`  [ERROR] Failed to parse schedule JSON for ${instanceId}. Skipping.`,
+		)
+		return
+	}
+
+	const effectiveTimezone = getEffectiveTimezone(schedule)
+	const now = DateTime.now()
+
+	if (
+		schedule.terminationDate &&
+		now > DateTime.fromISO(schedule.terminationDate)
+	) {
+		console.log(
+			`  -> ACTION: Terminating instance as termination date (${schedule.terminationDate}) has passed.`,
+		)
+		await ec2
+			.send(new TerminateInstancesCommand({ InstanceIds: [instanceId] }))
+			.catch((err) =>
+				console.error(
+					`[ERROR] Failed to terminate ${instanceId}:`,
+					err,
+				),
+			)
+		return
+	}
+
+	if (instanceState === 'running' && schedule.stop) {
+		for (const rule of schedule.stop) {
+			if (rule.expires && now > DateTime.fromISO(rule.expires)) continue
+			if (isCronDue(rule.cron, effectiveTimezone)) {
+				console.log(
+					`  -> ACTION: Stopping instance due to schedule: "${rule.cron}"`,
+				)
+				await ec2
+					.send(
+						new StopInstancesCommand({ InstanceIds: [instanceId] }),
+					)
+					.catch((err) =>
+						console.error(
+							`[ERROR] Failed to stop ${instanceId}:`,
+							err,
+						),
+					)
+				return
+			}
+		}
+	}
+
+	if (instanceState === 'stopped' && schedule.start) {
+		for (const rule of schedule.start) {
+			if (rule.expires && now > DateTime.fromISO(rule.expires)) continue
+			if (isCronDue(rule.cron, effectiveTimezone)) {
+				console.log(
+					`  -> ACTION: Starting instance due to schedule: "${rule.cron}"`,
+				)
+				await ec2
+					.send(
+						new StartInstancesCommand({
+							InstanceIds: [instanceId],
+						}),
+					)
+					.catch((err) =>
+						console.error(
+							`[ERROR] Failed to start ${instanceId}:`,
+							err,
+						),
+					)
+				return
+			}
+		}
+	}
+
+	console.log('  - No action required at this time.')
+}
+
+async function main() {
+	console.log(`Scheduler run started at: ${new Date().toISOString()}`)
+	console.log('======================================================')
+
+	for (const profile of AWS_PROFILES) {
+		try {
+			console.log(`\nProcessing AWS Profile: "${profile}"`)
+			const credentials = fromIni({ profile })
+
+			const regionDiscoveryClient = new EC2Client({ credentials, region: 'ap-south-1' })
+			const regions = await regionDiscoveryClient.send(
+				new DescribeRegionsCommand({}),
+			)
+			const regionNames =
+				(regions.Regions?.map((r) => r.RegionName).filter(
+					Boolean,
+				) as string[]) ?? []
+
+			console.log(`  Found ${regionNames.length} regions to scan.`)
+
+			for (const region of regionNames) {
+				console.log(`\n-- Scanning Region: ${region} --`)
+				const ec2 = new EC2Client({ credentials, region })
+
+				const { Reservations } = await ec2.send(
+					new DescribeInstancesCommand({
+						Filters: [
+							{ Name: 'tag-key', Values: [SCHEDULE_TAG_KEY] },
+						],
+					}),
+				)
+
+				const instances =
+					Reservations?.flatMap((res) => res.Instances ?? []) ?? []
+				if (instances.length === 0) {
+					console.log(
+						`  No instances with tag "${SCHEDULE_TAG_KEY}" found.`,
+					)
+					continue
+				}
+
+				for (const instance of instances) {
+					if (instance) await processInstance(instance, ec2)
+				}
+			}
+		} catch (error) {
+			console.error(
+				`\n[FATAL ERROR] processing profile "${profile}". Check credentials/permissions.`,
+				error,
+			)
+		}
+	}
+	console.log('\n======================================================')
+	console.log('Scheduler run finished.')
+}
+
+main().catch(console.error)

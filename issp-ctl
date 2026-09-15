@@ -1,0 +1,102 @@
+#!/bin/sh
+
+set -e
+
+CONFIG_FILE="/app/config.yml"
+OWNERSHIP_TAG_KEY="iv:self-service:ownership"
+
+send_notification() {
+    local url="$1"
+    local message="$2"
+    local name="$3"
+
+    if [ -z "$url" ] || [ "$url" = "null" ]; then
+        echo "Skipping notification for '${name}': Not configured or provided." >&2
+        return
+    fi
+
+    echo "Sending notification to ${name}..."
+    local json_payload
+    json_payload=$(jq -n --arg text "$message" '{text: $text}')
+
+    if ! curl -sS --fail -X POST -H 'Content-Type: application/json' --data "$json_payload" "$url" >/dev/null; then
+        echo "Warning: Failed to send notification to '${name}'." >&2
+    fi
+}
+
+if [ "$#" -ne 4 ]; then
+    echo "Error: Script requires 4 arguments: <action> <instance-id> <region> <profile>" >&2
+    exit 1
+fi
+
+ACTION="$1"
+INSTANCE_ID="$2"
+REGION="$3"
+PROFILE="$4"
+
+echo "Fetching tags for instance ${INSTANCE_ID}..."
+set +e
+TAGS_JSON=$(aws ec2 describe-instances \
+    --instance-ids "$INSTANCE_ID" \
+    --region "$REGION" \
+    --profile "$PROFILE" \
+    --query "Reservations[].Instances[].{Name:Tags[?Key=='Name'].Value | [0], Ownership:Tags[?Key=='$OWNERSHIP_TAG_KEY'].Value | [0]} | [0]" \
+    --output json)
+AWS_DESCRIBE_EXIT_CODE=$?
+set -e
+
+if [ $AWS_DESCRIBE_EXIT_CODE -ne 0 ]; then
+    echo "Error: Failed to fetch tags from AWS for instance ${INSTANCE_ID}." >&2
+    exit $AWS_DESCRIBE_EXIT_CODE
+fi
+
+INSTANCE_NAME=$(echo "$TAGS_JSON" | jq -r '.Name // empty')
+OWNERSHIP_TAG_VALUE=$(echo "$TAGS_JSON" | jq -r ".Ownership // empty")
+
+if [ -n "$INSTANCE_NAME" ]; then
+    INSTANCE_DISPLAY_NAME="*${INSTANCE_NAME}* (${INSTANCE_ID})"
+else
+    INSTANCE_DISPLAY_NAME="*${INSTANCE_ID}*"
+fi
+
+SUCCESS_MSG="Automatically initiated *${ACTION}* for ${INSTANCE_DISPLAY_NAME}."
+FAILURE_MSG="Failed to automatically initiate *${ACTION}* for ${INSTANCE_DISPLAY_NAME}."
+
+echo "Attempting to ${ACTION} instance ${INSTANCE_ID}..."
+set +e
+aws ec2 "${ACTION}-instances" --instance-ids "$INSTANCE_ID" --region "$REGION" --profile "$PROFILE"
+AWS_ACTION_EXIT_CODE=$?
+set -e
+
+if [ $AWS_ACTION_EXIT_CODE -eq 0 ]; then
+    echo "Action succeeded."
+    FINAL_MESSAGE="$SUCCESS_MSG"
+else
+    echo "Action failed with exit code ${AWS_ACTION_EXIT_CODE}." >&2
+    FINAL_MESSAGE="$FAILURE_MSG"
+fi
+
+ORG_BASE_URL=$(yq '.slack_webhook_url.org_base' "$CONFIG_FILE")
+GLOBAL_CHANNEL_ID=$(yq '.slack_webhook_url.notifications_channel' "$CONFIG_FILE")
+
+if [ -z "$ORG_BASE_URL" ] || [ "$ORG_BASE_URL" = "null" ]; then
+    echo "Error: 'slack_webhook_url.org_base' not found in ${CONFIG_FILE}. Cannot send Slack notifications." >&2
+    exit "$AWS_ACTION_EXIT_CODE"
+fi
+
+GLOBAL_WEBHOOK_URL=""
+if [ -n "$GLOBAL_CHANNEL_ID" ] && [ "$GLOBAL_CHANNEL_ID" != "null" ]; then
+    GLOBAL_WEBHOOK_URL="${ORG_BASE_URL}${GLOBAL_CHANNEL_ID}"
+fi
+
+INSTANCE_CHANNEL_ID=$(echo "$OWNERSHIP_TAG_VALUE" | jq -r '.notificationsChannel // empty')
+
+INSTANCE_WEBHOOK_URL=""
+if [ -n "$INSTANCE_CHANNEL_ID" ]; then
+    INSTANCE_WEBHOOK_URL="${ORG_BASE_URL}${INSTANCE_CHANNEL_ID}"
+fi
+
+send_notification "$GLOBAL_WEBHOOK_URL" "$FINAL_MESSAGE" "Global Channel"
+send_notification "$INSTANCE_WEBHOOK_URL" "$FINAL_MESSAGE" "Instance-Specific Channel"
+
+exit $AWS_ACTION_EXIT_CODE
