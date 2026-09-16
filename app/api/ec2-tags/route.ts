@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { checkIsAdmin } from '@/lib/auth'
+// import { checkIsAdmin } from '@/lib/auth'
 import { triggerCronfileRegeneration } from '@/lib/scheduler'
 import {
 	Tag as AwsSdkTag,

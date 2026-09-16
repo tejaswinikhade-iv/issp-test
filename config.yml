@@ -1,8 +1,8 @@
 timezone: Asia/Kolkata
 
-slack_webhook_url:
-    org_base: https://hooks.slack.com/services/T0304RBHHTK/
-    notifications_channel: B091R84QNLF/SxRjBYGFt5i8t1Hvd80Kk95h
+# slack_webhook_url:
+#     org_base: https://hooks.slack.com/services/T0304RBHHTK/
+#     notifications_channel: B091R84QNLF/SxRjBYGFt5i8t1Hvd80Kk95h
 
 profiles:
     infra:

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-import { canPerformAction, fetchGoogleUserEmail } from '@/lib/auth'
+// import { canPerformAction, fetchGoogleUserEmail } from '@/lib/auth'
 import { sendSlackNotification } from '@/lib/notifications'
 import { findTag, getName } from '@/lib/utils'
 import {

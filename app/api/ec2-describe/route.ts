@@ -1,4 +1,4 @@
-import { isAuthorizedEmail } from '@/lib/auth'
+// import { isAuthorizedEmail } from '@/lib/auth'
 import {
 	type Instance,
 	DescribeInstancesCommand,
