@@ -14,9 +14,3 @@ profiles:
             - ap-south-1
             - us-east-1
 
-admins:
-    - ansh.tiwatne@inspiritvision.com
-    - dhruv.dave@inspiritvision.com
-    - hemant.nemade@inspiritvision.com
-    - rajnish.roy@inspiritvision.com
-    - sneha.mahale@inspiritvision.com
