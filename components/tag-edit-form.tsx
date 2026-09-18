@@ -29,12 +29,12 @@ const formSchema = z.object({
 	ownership: z.object({
 		department: z.string().min(2, { message: 'Department is required.' }),
 		project: z.string().min(2, { message: 'Project is required.' }),
-		owner: z
-			.string()
-			.email({ message: 'A valid owner email is required.' })
-			.endsWith('@inspiritvision.com', {
-				message: 'Only inspiritvision.com emails are allowed.',
-			}),
+		// owner: z
+		// 	.string()
+		// 	.email({ message: 'A valid owner email is required.' })
+		// 	.endsWith('@inspiritvision.com', {
+		// 		message: 'Only inspiritvision.com emails are allowed.',
+		// 	}),
 		notificationsChannel: z
 			.string()
 			.refine((val) => !val || /^\w+\/\w+$/.test(val), {
@@ -104,39 +104,39 @@ const formSchema = z.object({
 			},
 		),
 
-	access: z
-		.array(
-			z.object({
-				email: z
-					.string()
-					.email({ message: 'Please enter a valid email.' })
-					.endsWith('@inspiritvision.com', {
-						message: 'Only @inspiritvision.com emails are allowed.',
-					}),
-				permissions: z
-					.object({
-						start: z.boolean().default(false),
-						stop: z.boolean().default(false),
-						reboot: z.boolean().default(false),
-					})
-					.refine((data) => data.start || data.stop || data.reboot, {
-						message: 'At least one permission must be selected.',
-					}),
-			}),
-		)
-		.optional()
-		.refine(
-			(items) => {
-				if (!items) return true
-				const emails = items.map((item) => item.email).filter(Boolean)
-				return new Set(emails).size === emails.length
-			},
-			{
-				message:
-					'Each user can only have one access rule. Please remove duplicate emails.',
-			},
-		),
-})
+// 	access: z
+// 		.array(
+// 			z.object({
+// 				email: z
+// 					.string()
+// 					.email({ message: 'Please enter a valid email.' })
+// 					.endsWith('@inspiritvision.com', {
+// 						message: 'Only @inspiritvision.com emails are allowed.',
+// 					}),
+// 				permissions: z
+// 					.object({
+// 						start: z.boolean().default(false),
+// 						stop: z.boolean().default(false),
+// 						reboot: z.boolean().default(false),
+// 					})
+// 					.refine((data) => data.start || data.stop || data.reboot, {
+// 						message: 'At least one permission must be selected.',
+// 					}),
+// 			}),
+// 		)
+// 		.optional()
+// 		.refine(
+// 			(items) => {
+// 				if (!items) return true
+// 				const emails = items.map((item) => item.email).filter(Boolean)
+// 				return new Set(emails).size === emails.length
+// 			},
+// 			{
+// 				message:
+// 					'Each user can only have one access rule. Please remove duplicate emails.',
+// 			},
+// 		),
+// })
 
 export default function TagEditForm({
 	instance,
@@ -230,7 +230,7 @@ export default function TagEditForm({
 		)
 
 		const body = {
-			token: localStorage.getItem('googleAccessToken'),
+			// token: localStorage.getItem('googleAccessToken'),
 			instanceId: instance.InstanceId,
 			region: instance.Region,
 			awsAccount,
@@ -247,10 +247,10 @@ export default function TagEditForm({
 					Key: 'iv:self-service:schedule',
 					Value: JSON.stringify(values.schedule, null, 0),
 				},
-				{
-					Key: 'iv:self-service:access',
-					Value: JSON.stringify(accessTagValue, null, 0),
-				},
+				// {
+				// 	Key: 'iv:self-service:access',
+				// 	Value: JSON.stringify(accessTagValue, null, 0),
+				// },
 			],
 		}
 
