@@ -68,15 +68,15 @@ export async function POST(request: NextRequest) {
 
 		const ec2Client = new EC2Client({ region, profile: awsAccount })
 
-		const authorized = await checkIsAdmin({ accessToken: token })
-		if (!authorized) {
-			return NextResponse.json(
-				{
-					error: 'Forbidden: Not authorized to update tags for this instance.',
-				},
-				{ status: 403 },
-			)
-		}
+		// const authorized = await checkIsAdmin({ accessToken: token })
+		// if (!authorized) {
+		// 	return NextResponse.json(
+		// 		{
+		// 			error: 'Forbidden: Not authorized to update tags for this instance.',
+		// 		},
+		// 		{ status: 403 },
+		// 	)
+		// }
 
 		const awsTagsToApply: AwsSdkTag[] = tags.map((tag) => ({
 			Key: tag.Key,
