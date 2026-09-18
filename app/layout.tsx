@@ -40,7 +40,7 @@ export default function RootLayout({
 						enableSystem
 						disableTransitionOnChange
 					>
-						<ConfigContextProvider>
+						{/* <ConfigContextProvider>
 							<UserInfoContextProvider>
 								<Navbar />
 								<main className="flex h-full flex-col overflow-hidden">
@@ -48,7 +48,7 @@ export default function RootLayout({
 									<Toaster richColors />
 								</main>
 							</UserInfoContextProvider>
-						</ConfigContextProvider>
+						</ConfigContextProvider> */}
 					</ThemeProvider>
 				</GoogleOAuthProvider>
 			</body>

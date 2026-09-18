@@ -1,6 +1,6 @@
 services:
     nextjs:
-        image: 'devops.apps.inspiritvision.com:8443/test:1.0.0'
+        image: 'devops.apps.inspiritvision.com:8443/docker-repo/infra-self-service-portal:0.2.0'
         # build: .
         container_name: issp
         ports:
