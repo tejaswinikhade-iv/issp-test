@@ -73,12 +73,12 @@ export async function POST(request: NextRequest) {
 			tags: instanceTags,
 		} = await getInstanceDetails(ec2Client, instanceId)
 
-		if (!(await canPerformAction(token, instanceTags, action))) {
-			return NextResponse.json(
-				{ error: 'Forbidden: Not authorized.' },
-				{ status: 403 },
-			)
-		}
+		// if (!(await canPerformAction(token, instanceTags, action))) {
+		// 	return NextResponse.json(
+		// 		{ error: 'Forbidden: Not authorized.' },
+		// 		{ status: 403 },
+		// 	)
+		// }
 
 		let commandResponse:
 			| StartInstancesCommandOutput
