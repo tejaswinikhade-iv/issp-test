@@ -30,11 +30,12 @@ export async function POST(request: NextRequest) {
 		)
 	}
 
-	const authorized = await isAuthorizedEmail(token)
+	// const authorized = await isAuthorizedEmail(token)
 
-	if (!authorized) {
-		return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	}
+	// if (!authorized) {
+	// 	return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+	// }
+	console.log(`Fetching instances from regions: ${regions.join(', ')}`)
 
 	// const regionDiscoveryClient = new EC2Client({
 	// 	region: 'ap-south-1',

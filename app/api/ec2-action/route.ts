@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
 		const {
 			displayName,
 			notificationsChannel,
-			tags: instanceTags,
+			// tags: instanceTags,
 		} = await getInstanceDetails(ec2Client, instanceId)
 
 		// if (!(await canPerformAction(token, instanceTags, action))) {
