@@ -1,4 +1,5 @@
 import { ThemeProvider } from '@/components/theme-provider'
+import { ConfigContextProvider } from '@/hooks/use-config'
 import type { Metadata } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import './globals.css'
@@ -16,7 +17,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} flex h-dvh flex-col overflow-hidden antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
-          {children}
+          <ConfigContextProvider>{children}</ConfigContextProvider>
         </ThemeProvider>
       </body>
     </html>
