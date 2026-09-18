@@ -59,10 +59,11 @@ export async function POST(request: NextRequest) {
 			)
 		}
 
-		const userEmail = await fetchGoogleUserEmail(token).catch(() => {
-			console.warn('Could not fetch user email from token.')
-			return 'unknown user'
-		})
+		const userEmail = 'system-user'
+		// const userEmail = await fetchGoogleUserEmail(token).catch(() => {
+		// 	console.warn('Could not fetch user email from token.')
+		// 	return 'unknown user'
+		// })
 
 		const ec2Client = new EC2Client({ region, profile: awsAccount })
 
