@@ -1,67 +1,73 @@
-async function fetchAndCacheInstances() {
-	if (!selectedProfile || !selectedRegion) {
-		return
-	}
+import { listE2ENodes, normalizeE2EStatus } from '@/lib/e2e'
+import { NextRequest, NextResponse } from 'next/server'
 
-	const profileConfig = config.profiles[selectedProfile]
-	if (!profileConfig) {
-		return
-	}
+interface DescribeRequestBody {
+	token: string
+	projectId: string
+	locations: string[]
+}
 
-	setLoading(true)
-	const token = localStorage.getItem('googleAccessToken')
-	const cacheKey = `${selectedProfile}-${selectedRegion}`
+export async function POST(request: NextRequest) {
+	let body: DescribeRequestBody
 
 	try {
-		let fetchedInstances = []
+		body = await request.json()
+	} catch {
+		return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
+	}
 
-		if (profileConfig.provider === 'e2e') {
-			const requestBody = {
-				token,
-				projectId: profileConfig.projectId,
-				locations: [selectedRegion],
-			}
+	const { token, projectId, locations } = body
 
-			const res = await fetch('/api/e2e-describe', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(requestBody),
-			})
+	if (!token || !projectId || !locations?.length) {
+		return NextResponse.json(
+			{ error: 'Missing required fields: token, projectId, locations.' },
+			{ status: 400 },
+		)
+	}
 
-			const data = await res.json()
-			fetchedInstances = data.instances || []
-		} else {
-			// Default to AWS for any profile without an explicit provider,
-			// so existing config.yml entries keep working unchanged.
-			const requestBody = {
-				token,
-				awsAccount: selectedProfile,
-				regions: [selectedRegion],
-			}
+	// TODO: replace with real token verification once auth is wired back up
+	// (see the commented-out canPerformAction / isAuthorizedEmail pattern in
+	// the AWS routes — this should follow the same pattern for consistency).
 
-			const res = await fetch('/api/ec2-describe', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(requestBody),
-			})
+	try {
+		const perLocation = await Promise.all(
+			locations.map(async (location) => {
+				try {
+					const nodes = await listE2ENodes(projectId, location)
+					// Shaped to match the AWS EC2 `Instance` object VMTable
+					// already knows how to render (InstanceId, State.Name,
+					// PublicIpAddress, Tags[]) so no per-provider branching
+					// is needed in the table itself. E2E has no equivalent
+					// of the iv:self-service:* tags AWS instances carry, so
+					// Department/Owner/Termination Date will render blank
+					// for these rows until/unless E2E's own label system is
+					// mapped in here.
+					return nodes.map((node) => ({
+						InstanceId: String(node.id),
+						State: { Name: normalizeE2EStatus(node.status) },
+						PublicIpAddress: node.public_ip_address ?? null,
+						Tags: [{ Key: 'Name', Value: node.name }],
+						Region: location,
+						Provider: 'e2e' as const,
+						ProjectId: node.project?.id
+							? String(node.project.id)
+							: projectId,
+					}))
+				} catch (err) {
+					console.error(`E2E fetch failed for location ${location}:`, err)
+					return []
+				}
+			}),
+		)
 
-			const data = await res.json()
-			fetchedInstances = data.instances || []
-		}
+		const instances = perLocation.flat()
 
-		setInstanceCache((prevCache) => ({
-			...prevCache,
-			[cacheKey]: {
-				data: fetchedInstances,
-				fetchedAt: new Date(),
-			},
-		}))
-
-		setInstances(fetchedInstances)
+		return NextResponse.json({ instances, count: instances.length })
 	} catch (error) {
-		console.error('Failed to fetch instances:', error)
-		setInstances([])
-	} finally {
-		setLoading(false)
+		console.error('E2E describe error:', error)
+		return NextResponse.json(
+			{ error: 'Failed to fetch E2E nodes.' },
+			{ status: 500 },
+		)
 	}
 }
