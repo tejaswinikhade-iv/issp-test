@@ -52,12 +52,13 @@ export async function POST(request: NextRequest) {
 		parsedBody = (await request.json()) as ActionRequestBody
 		const { token, action, instanceId, region, awsAccount } = parsedBody
 
-		if (!token || !action || !instanceId || !region || !awsAccount) {
-			return NextResponse.json(
-				{ error: 'Invalid request.' },
-				{ status: 400 },
-			)
-		}
+		// TODO: reinstate `!token` once canPerformAction is restored below.
+	if (!action || !instanceId || !region || !awsAccount) {
+		return NextResponse.json(
+			{ error: 'Invalid request.' },
+			{ status: 400 },
+		)
+	}
 
 		const userEmail = 'system-user'
 		// const userEmail = await fetchGoogleUserEmail(token).catch(() => {

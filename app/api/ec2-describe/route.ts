@@ -23,12 +23,16 @@ export async function POST(request: NextRequest) {
 		)
 	}
 
-	if (!token || !awsAccount || !regions) {
-		return NextResponse.json(
-			{ error: 'Unauthorized: Token missing.' },
-			{ status: 401 },
-		)
-	}
+	// TODO: reinstate `!token` in this check once isAuthorizedEmail is
+// restored below. Requiring a token while that check is commented out
+// just blocks every request for no real security benefit — every
+// "empty table" incident so far traced back to this line.
+if (!awsAccount || !regions) {
+	return NextResponse.json(
+		{ error: 'Invalid request: missing awsAccount or regions.' },
+		{ status: 400 },
+	)
+}
 
 	// const authorized = await isAuthorizedEmail(token)
 
