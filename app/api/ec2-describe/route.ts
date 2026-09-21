@@ -1,109 +1,110 @@
-// import { isAuthorizedEmail } from '@/lib/auth'
 import {
-	type Instance,
-	DescribeInstancesCommand,
-	EC2Client,
+    type Instance,
+    DescribeInstancesCommand,
+    EC2Client,
 } from '@aws-sdk/client-ec2'
 import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(request: NextRequest) {
-	let token: string | undefined
-	let awsAccount: string | undefined
-	let regions: string[] | undefined
+    let awsAccount: string | undefined
+    let regions: string[] | undefined
 
-	try {
-		const body = await request.json()
-		token = body.token
-		awsAccount = body.awsAccount
-		regions = body.regions
-	} catch {
-		return NextResponse.json(
-			{ error: 'Invalid request body.' },
-			{ status: 400 },
-		)
-	}
+    try {
+        const body = await request.json()
 
-	// TODO: reinstate `!token` in this check once isAuthorizedEmail is
-// restored below. Requiring a token while that check is commented out
-// just blocks every request for no real security benefit — every
-// "empty table" incident so far traced back to this line.
-if (!awsAccount || !regions) {
-	return NextResponse.json(
-		{ error: 'Invalid request: missing awsAccount or regions.' },
-		{ status: 400 },
-	)
-}
+        awsAccount = body.awsAccount
+        regions = body.regions
+    } catch {
+        return NextResponse.json(
+            { error: 'Invalid request body.' },
+            { status: 400 },
+        )
+    }
 
-	// const authorized = await isAuthorizedEmail(token)
+    if (
+        !awsAccount ||
+        !Array.isArray(regions) ||
+        regions.length === 0
+    ) {
+        return NextResponse.json(
+            {
+                error:
+                    'Invalid request: awsAccount and a non-empty regions array are required.',
+            },
+            { status: 400 },
+        )
+    }
 
-	// if (!authorized) {
-	// 	return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-	// }
-	console.log(`Fetching instances from regions: ${regions.join(', ')}`)
+    console.log(
+        `Fetching instances for account ${awsAccount} from regions: ${regions.join(', ')}`,
+    )
 
-	// const regionDiscoveryClient = new EC2Client({
-	// 	region: 'ap-south-1',
-	// 	credentials,
-	// })
+    try {
+        const allInstancesPromises = regions.map(async (regionName) => {
+            const regionalEc2Client = new EC2Client({
+                region: regionName,
+            })
 
-	try {
-		// const describeRegionsCommand = new DescribeRegionsCommand({})
-		// const regionsResponse = await regionDiscoveryClient.send(
-		// 	describeRegionsCommand,
-		// )
-		// const regionNames =
-		// 	regionsResponse.Regions?.map((region) => region.RegionName).filter(
-		// 		(name): name is string => typeof name === 'string',
-		// 	) || []
+            try {
+                const regionInstances: (Instance & {
+                    Region?: string
+                })[] = []
 
-		// if (regionNames.length === 0) {
-		// 	console.warn('No regions found or accessible.')
-		// 	return NextResponse.json({ instances: [] })
-		// }
+                let nextToken: string | undefined
 
-		console.log(`Fetching instances from regions: ${regions.join(', ')}`)
+                do {
+                    const response = await regionalEc2Client.send(
+                        new DescribeInstancesCommand({
+                            NextToken: nextToken,
+                        }),
+                    )
 
-		const allInstancesPromises = regions.map(async (regionName) => {
-			const regionalEc2Client = new EC2Client({
-				region: regionName,
-				profile: awsAccount,
-			})
+                    const instances =
+                        response.Reservations?.flatMap(
+                            (reservation) =>
+                                reservation.Instances || [],
+                        ) || []
 
-			try {
-				const command = new DescribeInstancesCommand({})
-				const response = await regionalEc2Client.send(command)
-				const instancesInRegion =
-					response.Reservations?.flatMap(
-						(res) => res.Instances || [],
-					) || []
+                    regionInstances.push(
+                        ...instances.map((instance) => ({
+                            ...instance,
+                            Region: regionName,
+                        })),
+                    )
 
-				return instancesInRegion.map((instance) => ({
-					...instance,
-					Region: regionName,
-				}))
-			} catch (regionError) {
-				console.error(
-					`Error fetching instances from region ${regionName}:`,
-					regionError,
-				)
-				return []
-			}
-		})
+                    nextToken = response.NextToken
+                } while (nextToken)
 
-		const resultsPerRegion = await Promise.all(allInstancesPromises)
-		const allInstances = resultsPerRegion.flat() as (Instance & {
-			Region?: string
-		})[]
+                return regionInstances
+            } catch (regionError) {
+                console.error(
+                    `Error fetching instances from region ${regionName}:`,
+                    regionError,
+                )
 
-		return NextResponse.json({
-			instances: allInstances,
-			count: allInstances.length,
-		})
-	} catch (error) {
-		console.error('EC2 global fetch error:', error)
-		return NextResponse.json(
-			{ error: 'Failed to fetch EC2 instances from all regions' },
-			{ status: 500 },
-		)
-	}
+                return []
+            }
+        })
+
+        const resultsPerRegion = await Promise.all(
+            allInstancesPromises,
+        )
+
+        const allInstances = resultsPerRegion.flat()
+
+        return NextResponse.json({
+            instances: allInstances,
+            count: allInstances.length,
+        })
+    } catch (error) {
+        console.error('EC2 global fetch error:', error)
+
+        return NextResponse.json(
+            {
+                error:
+                    'Failed to fetch EC2 instances from all regions.',
+            },
+            { status: 500 },
+        )
+    }
 }
