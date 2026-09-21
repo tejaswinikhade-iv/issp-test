@@ -1,7 +1,13 @@
+export interface VMProfile {
+	provider: 'aws' | 'e2e'
+	regions: string[] // AWS: region codes. E2E: location names (e.g. "Delhi")
+	projectId?: string // required when provider === 'e2e'
+}
+
 export interface Config {
 	timezone: string
 	slack_webhook_url: { org_base: string; notifications_channel: string }
-	profiles: Record<string, { regions: string[] }>
+	profiles: Record<string, VMProfile>
 	admins: string[]
 }
 

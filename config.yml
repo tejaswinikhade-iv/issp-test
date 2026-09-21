@@ -1,23 +1,16 @@
-timezone: Asia/Kolkata
-
-slack_webhook_url:
-    org_base: https://hooks.slack.com/services/T0304RBHHTK/
-    notifications_channel: B091R84QNLF/SxRjBYGFt5i8t1Hvd80Kk95h
-
 profiles:
-    infra:
-        regions:
-            - ap-south-1
-
-
-    product:
-        regions:
-            - ap-south-1
-            - us-east-1
-
-admins:
-    - ansh.tiwatne@inspiritvision.com
-    - dhruv.dave@inspiritvision.com
-    - hemant.nemade@inspiritvision.com
-    - rajnish.roy@inspiritvision.com
-    - sneha.mahale@inspiritvision.com
+  infra:
+    provider: aws
+    regions:
+      - ap-south-1
+      - us-east-1
+  product:
+    provider: aws
+    regions:
+      - ap-south-1
+  e2e-prod:
+    provider: e2e
+    projectId: "12345"
+    regions:
+      - Delhi
+      - Mumbai
