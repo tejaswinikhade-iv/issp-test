@@ -10,7 +10,6 @@ profiles:
       - ap-south-1
   e2e-prod:
     provider: e2e
-    projectId: "12345"
+    projectId: "10032"
     regions:
       - Delhi
-      - Mumbai
