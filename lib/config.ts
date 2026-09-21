@@ -12,15 +12,10 @@ export interface Config {
 	admins: string[]
 }
 
-export const getConfig = cache(async (): Promise<Config> => {
-	const filePath = path.join(process.cwd(), 'config.yml')
-
-	try {
-		const fileContents = await fs.readFile(filePath, 'utf8')
-		const data = YAML.parse(fileContents) as Config
-		return data
-	} catch (error) {
-		console.error('Error reading or parsing config.yml:', error)
+export async function getConfig(): Promise<Config> {
+	const res = await fetch('/api/config')
+	if (!res.ok) {
 		throw new Error('Failed to load configuration.')
 	}
-})
+	return res.json()
+}
