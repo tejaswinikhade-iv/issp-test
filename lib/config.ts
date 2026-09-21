@@ -1,10 +1,3 @@
-'use server'
-
-import fs from 'node:fs/promises'
-import path from 'node:path'
-import { cache } from 'react'
-import YAML from 'yaml'
-
 export interface Config {
 	timezone: string
 	slack_webhook_url: { org_base: string; notifications_channel: string }
