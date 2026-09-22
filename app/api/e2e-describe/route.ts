@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
 	}
 
-	const token = body.token
+	// const token = body.token
 	const { projectId, locations } = body
 
 	// TODO: reinstate `!token` once real auth is wired up for this route too.
