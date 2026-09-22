@@ -107,7 +107,7 @@ export default function VMTable() {
 
 			if (profileConfig.provider === 'e2e') {
 				const requestBody = {
-					token,
+					// token,
 					projectId: profileConfig.projectId,
 					locations: [selectedRegion],
 				}
