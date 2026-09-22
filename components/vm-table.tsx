@@ -129,11 +129,11 @@ export default function VMTable() {
 				// Default to AWS for any profile without an explicit
 				// provider, so existing config.yml entries keep working
 				// unchanged.
-				const requestBody = {
-					token,
-					awsAccount: selectedProfile,
-					regions: [selectedRegion],
-				}
+				// const requestBody = {
+				// 	token,
+				// 	awsAccount: selectedProfile,
+				// 	regions: [selectedRegion],
+				// }
 
 				// const res = await fetch('/api/ec2-describe', {
 				// 	method: 'POST',

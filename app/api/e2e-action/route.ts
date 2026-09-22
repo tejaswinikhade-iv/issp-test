@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
 	try {
 		parsedBody = (await request.json()) as ActionRequestBody
-		const { token, action, nodeId, nodeName, projectId, location, notificationsChannel } =
+		const { action, nodeId, nodeName, projectId, location, notificationsChannel } =
 			parsedBody
 
 		if (!token || !action || !nodeId || !projectId || !location) {

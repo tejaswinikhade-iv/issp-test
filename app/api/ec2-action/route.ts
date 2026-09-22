@@ -50,7 +50,7 @@ export async function POST(request: NextRequest) {
 
 	try {
 		parsedBody = (await request.json()) as ActionRequestBody
-		const { token, action, instanceId, region, awsAccount } = parsedBody
+		const { action, instanceId, region, awsAccount } = parsedBody
 
 		// TODO: reinstate `!token` once canPerformAction is restored below.
 	if (!action || !instanceId || !region || !awsAccount) {
