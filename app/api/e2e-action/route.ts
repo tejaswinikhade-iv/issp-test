@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
 		const { action, nodeId, nodeName, projectId, location, notificationsChannel } =
 			parsedBody
 
-		if (!token || !action || !nodeId || !projectId || !location) {
+		if (!action || !nodeId || !projectId || !location) {
 			return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
 		}
 
