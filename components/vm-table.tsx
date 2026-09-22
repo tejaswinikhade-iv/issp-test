@@ -135,11 +135,11 @@ export default function VMTable() {
 					regions: [selectedRegion],
 				}
 
-				const res = await fetch('/api/ec2-describe', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(requestBody),
-				})
+				// const res = await fetch('/api/ec2-describe', {
+				// 	method: 'POST',
+				// 	headers: { 'Content-Type': 'application/json' },
+				// 	body: JSON.stringify(requestBody),
+				// })
 
 				const data = await res.json()
 
