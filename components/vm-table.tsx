@@ -118,13 +118,13 @@ export default function VMTable() {
 					body: JSON.stringify(requestBody),
 				})
 
-				const data = await res.json()
+				// const data = await res.json()
 
-				if (!res.ok) {
-					console.error('E2E describe failed:', data.error || res.status)
-				}
+				// if (!res.ok) {
+				// 	console.error('E2E describe failed:', data.error || res.status)
+				// }
 
-				fetchedInstances = data.instances || []
+				// fetchedInstances = data.instances || []
 			} else {
 				// Default to AWS for any profile without an explicit
 				// provider, so existing config.yml entries keep working
