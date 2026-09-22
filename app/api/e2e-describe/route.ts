@@ -2,7 +2,7 @@ import { listE2ENodes, normalizeE2EStatus } from '@/lib/e2e'
 import { NextRequest, NextResponse } from 'next/server'
 
 interface DescribeRequestBody {
-	token: string
+	// token: string
 	projectId: string
 	locations: string[]
 }
@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
 		return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 })
 	}
 
-	const { token, projectId, locations } = body
+	const { projectId, locations } = body
 
 	// TODO: reinstate `!token` once real auth is wired up for this route too.
 	if (!projectId || !locations?.length) {
