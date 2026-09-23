@@ -18,10 +18,9 @@ export async function POST(request: NextRequest) {
 
 	const { token, projectId, locations } = body
 
-	// TODO: reinstate `!token` once real auth is wired up for this route too.
-	if (!projectId || !locations?.length) {
+	if (!token || !projectId || !locations?.length) {
 		return NextResponse.json(
-			{ error: 'Missing required fields: projectId, locations.' },
+			{ error: 'Missing required fields: token, projectId, locations.' },
 			{ status: 400 },
 		)
 	}
