@@ -26,10 +26,10 @@ export async function POST(request: NextRequest) {
 
 	try {
 		parsedBody = (await request.json()) as ActionRequestBody
-		const { action, nodeId, nodeName, projectId, location, notificationsChannel } =
+		const { token, action, nodeId, nodeName, projectId, location, notificationsChannel } =
 			parsedBody
 
-		if (!action || !nodeId || !projectId || !location) {
+		if (!token || !action || !nodeId || !projectId || !location) {
 			return NextResponse.json({ error: 'Invalid request.' }, { status: 400 })
 		}
 

@@ -1,133 +1,110 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-// import { canPerformAction, fetchGoogleUserEmail } from '@/lib/auth'
-import { sendSlackNotification } from '@/lib/notifications'
-import { findTag, getName } from '@/lib/utils'
 import {
-	type RebootInstancesCommandOutput,
-	type StartInstancesCommandOutput,
-	type StopInstancesCommandOutput,
-	DescribeInstancesCommand,
-	EC2Client,
-	RebootInstancesCommand,
-	StartInstancesCommand,
-	StopInstancesCommand,
+    type Instance,
+    DescribeInstancesCommand,
+    EC2Client,
 } from '@aws-sdk/client-ec2'
 import { NextRequest, NextResponse } from 'next/server'
 
-interface ActionRequestBody {
-	token: string
-	action: 'start' | 'stop' | 'reboot'
-	instanceId: string
-	region: string
-	awsAccount: string
-}
-
-async function getInstanceDetails(ec2Client: EC2Client, instanceId: string) {
-	const command = new DescribeInstancesCommand({ InstanceIds: [instanceId] })
-	const { Reservations = [] } = await ec2Client.send(command)
-
-	const instance = Reservations[0]?.Instances?.[0]
-	if (!instance) {
-		throw new Error(`Instance "${instanceId}" not found.`)
-	}
-
-	const name = findTag('Name', instance, false)
-	const displayName = name ? `*${name}* (${instanceId})` : `*${instanceId}*`
-
-	const ownershipInfo = findTag('iv:self-service:ownership', instance)
-	const notificationsChannel = ownershipInfo.notificationsChannel
-
-	return {
-		displayName,
-		notificationsChannel,
-		tags: instance.Tags || [],
-	}
-}
-
 export async function POST(request: NextRequest) {
-	let parsedBody: ActionRequestBody | null = null
+    let awsAccount: string | undefined
+    let regions: string[] | undefined
 
-	try {
-		parsedBody = (await request.json()) as ActionRequestBody
-		const { action, instanceId, region, awsAccount } = parsedBody
+    try {
+        const body = await request.json()
 
-		// TODO: reinstate `!token` once canPerformAction is restored below.
-	if (!action || !instanceId || !region || !awsAccount) {
-		return NextResponse.json(
-			{ error: 'Invalid request.' },
-			{ status: 400 },
-		)
-	}
+        awsAccount = body.awsAccount
+        regions = body.regions
+    } catch {
+        return NextResponse.json(
+            { error: 'Invalid request body.' },
+            { status: 400 },
+        )
+    }
 
-		const userEmail = 'system-user'
-		// const userEmail = await fetchGoogleUserEmail(token).catch(() => {
-		// 	console.warn('Could not fetch user email from token.')
-		// 	return 'unknown user'
-		// })
+    if (
+        !awsAccount ||
+        !Array.isArray(regions) ||
+        regions.length === 0
+    ) {
+        return NextResponse.json(
+            {
+                error:
+                    'Invalid request: awsAccount and a non-empty regions array are required.',
+            },
+            { status: 400 },
+        )
+    }
 
-		const ec2Client = new EC2Client({ region, profile: awsAccount })
+    console.log(
+        `Fetching instances for account ${awsAccount} from regions: ${regions.join(', ')}`,
+    )
 
-		const {
-			displayName,
-			notificationsChannel,
-			// tags: instanceTags,
-		} = await getInstanceDetails(ec2Client, instanceId)
+    try {
+        const allInstancesPromises = regions.map(async (regionName) => {
+            const regionalEc2Client = new EC2Client({
+                region: regionName,
+            })
 
-		// if (!(await canPerformAction(token, instanceTags, action))) {
-		// 	return NextResponse.json(
-		// 		{ error: 'Forbidden: Not authorized.' },
-		// 		{ status: 403 },
-		// 	)
-		// }
+            try {
+                const regionInstances: (Instance & {
+                    Region?: string
+                })[] = []
 
-		let commandResponse:
-			| StartInstancesCommandOutput
-			| StopInstancesCommandOutput
-			| RebootInstancesCommandOutput
+                let nextToken: string | undefined
 
-		switch (action) {
-			case 'start':
-				commandResponse = await ec2Client.send(
-					new StartInstancesCommand({ InstanceIds: [instanceId] }),
-				)
-				break
-			case 'stop':
-				commandResponse = await ec2Client.send(
-					new StopInstancesCommand({ InstanceIds: [instanceId] }),
-				)
-				break
-			case 'reboot':
-				commandResponse = await ec2Client.send(
-					new RebootInstancesCommand({ InstanceIds: [instanceId] }),
-				)
-				break
-		}
+                do {
+                    const response = await regionalEc2Client.send(
+                        new DescribeInstancesCommand({
+                            NextToken: nextToken,
+                        }),
+                    )
 
-		await sendSlackNotification(
-			`*${getName(userEmail) || userEmail}* initiated *${action}* for ${displayName}.`,
-			notificationsChannel,
-		)
+                    const instances =
+                        response.Reservations?.flatMap(
+                            (reservation) =>
+                                reservation.Instances || [],
+                        ) || []
 
-		return NextResponse.json({
-			message: `Successfully initiated ${action} for instance: ${instanceId}`,
-			details: commandResponse,
-		})
-	} catch (error: any) {
-		console.error(`Error during action handler:`, error)
+                    regionInstances.push(
+                        ...instances.map((instance) => ({
+                            ...instance,
+                            Region: regionName,
+                        })),
+                    )
 
-		if (error.message?.includes('not found')) {
-			return NextResponse.json({ error: error.message }, { status: 404 })
-		}
-		if (error instanceof SyntaxError) {
-			return NextResponse.json(
-				{ error: 'Invalid JSON in request body.' },
-				{ status: 400 },
-			)
-		}
-		return NextResponse.json(
-			{ error: 'An unexpected error occurred.' },
-			{ status: 500 },
-		)
-	}
+                    nextToken = response.NextToken
+                } while (nextToken)
+
+                return regionInstances
+            } catch (regionError) {
+                console.error(
+                    `Error fetching instances from region ${regionName}:`,
+                    regionError,
+                )
+
+                return []
+            }
+        })
+
+        const resultsPerRegion = await Promise.all(
+            allInstancesPromises,
+        )
+
+        const allInstances = resultsPerRegion.flat()
+
+        return NextResponse.json({
+            instances: allInstances,
+            count: allInstances.length,
+        })
+    } catch (error) {
+        console.error('EC2 global fetch error:', error)
+
+        return NextResponse.json(
+            {
+                error:
+                    'Failed to fetch EC2 instances from all regions.',
+            },
+            { status: 500 },
+        )
+    }
 }

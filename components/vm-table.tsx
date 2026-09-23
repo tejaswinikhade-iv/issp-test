@@ -126,7 +126,28 @@ export default function VMTable() {
 
 				fetchedInstances = data.instances || []
 			} else {
-			fetchedInstances = []
+				// Default to AWS for any profile without an explicit
+				// provider, so existing config.yml entries keep working
+				// unchanged.
+				const requestBody = {
+					token,
+					awsAccount: selectedProfile,
+					regions: [selectedRegion],
+				}
+
+				const res = await fetch('/api/ec2-describe', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(requestBody),
+				})
+
+				const data = await res.json()
+
+				if (!res.ok) {
+					console.error('EC2 describe failed:', data.error || res.status)
+				}
+
+				fetchedInstances = data.instances || []
 			}
 
 			setInstanceCache((prevCache) => ({
