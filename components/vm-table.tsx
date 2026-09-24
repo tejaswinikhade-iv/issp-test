@@ -112,11 +112,11 @@ export default function VMTable() {
 					locations: [selectedRegion],
 				}
 
-				const res = await fetch('/api/e2e-describe', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(requestBody),
-				})
+				// const res = await fetch('/api/e2e-describe', {
+				// 	method: 'POST',
+				// 	headers: { 'Content-Type': 'application/json' },
+				// 	body: JSON.stringify(requestBody),
+				// })
 
 				const data = await res.json()
 
@@ -129,17 +129,17 @@ export default function VMTable() {
 				// Default to AWS for any profile without an explicit
 				// provider, so existing config.yml entries keep working
 				// unchanged.
-				const requestBody = {
-					token,
-					awsAccount: selectedProfile,
-					regions: [selectedRegion],
-				}
+				// const requestBody = {
+				// 	token,
+				// 	awsAccount: selectedProfile,
+				// 	regions: [selectedRegion],
+				// }
 
-				const res = await fetch('/api/ec2-describe', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify(requestBody),
-				})
+				// const res = await fetch('/api/ec2-describe', {
+				// 	method: 'POST',
+				// 	headers: { 'Content-Type': 'application/json' },
+				// 	body: JSON.stringify(requestBody),
+				// })
 
 				const data = await res.json()
 
