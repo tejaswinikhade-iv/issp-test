@@ -102,53 +102,53 @@ export default function VMTable() {
 		const token = localStorage.getItem('googleAccessToken')
 		const cacheKey = `${selectedProfile}-${selectedRegion}`
 
-		try {
-			let fetchedInstances: any[] = []
+		// try {
+		// 	let fetchedInstances: any[] = []
 
-			if (profileConfig.provider === 'e2e') {
-				const requestBody = {
-					token,
-					projectId: profileConfig.projectId,
-					locations: [selectedRegion],
-				}
+		// 	if (profileConfig.provider === 'e2e') {
+		// 		const requestBody = {
+		// 			token,
+		// 			projectId: profileConfig.projectId,
+		// 			locations: [selectedRegion],
+		// 		}
 
-				// const res = await fetch('/api/e2e-describe', {
-				// 	method: 'POST',
-				// 	headers: { 'Content-Type': 'application/json' },
-				// 	body: JSON.stringify(requestBody),
-				// })
+		// 		// const res = await fetch('/api/e2e-describe', {
+		// 		// 	method: 'POST',
+		// 		// 	headers: { 'Content-Type': 'application/json' },
+		// 		// 	body: JSON.stringify(requestBody),
+		// 		// })
 
-				const data = await res.json()
+		// 		const data = await res.json()
 
-				if (!res.ok) {
-					console.error('E2E describe failed:', data.error || res.status)
-				}
+		// 		if (!res.ok) {
+		// 			console.error('E2E describe failed:', data.error || res.status)
+		// 		}
 
-				fetchedInstances = data.instances || []
-			} else {
-				// Default to AWS for any profile without an explicit
-				// provider, so existing config.yml entries keep working
-				// unchanged.
-				// const requestBody = {
-				// 	token,
-				// 	awsAccount: selectedProfile,
-				// 	regions: [selectedRegion],
-				// }
+		// 		fetchedInstances = data.instances || []
+		// 	} else {
+		// 		// Default to AWS for any profile without an explicit
+		// 		// provider, so existing config.yml entries keep working
+		// 		// unchanged.
+		// 		// const requestBody = {
+		// 		// 	token,
+		// 		// 	awsAccount: selectedProfile,
+		// 		// 	regions: [selectedRegion],
+		// 		// }
 
-				// const res = await fetch('/api/ec2-describe', {
-				// 	method: 'POST',
-				// 	headers: { 'Content-Type': 'application/json' },
-				// 	body: JSON.stringify(requestBody),
-				// })
+		// 		// const res = await fetch('/api/ec2-describe', {
+		// 		// 	method: 'POST',
+		// 		// 	headers: { 'Content-Type': 'application/json' },
+		// 		// 	body: JSON.stringify(requestBody),
+		// 		// })
 
-				const data = await res.json()
+		// 		const data = await res.json()
 
-				if (!res.ok) {
-					console.error('EC2 describe failed:', data.error || res.status)
-				}
+		// 		if (!res.ok) {
+		// 			console.error('EC2 describe failed:', data.error || res.status)
+		// 		}
 
-				fetchedInstances = data.instances || []
-			}
+		// 		fetchedInstances = data.instances || []
+		// 	}
 
 			setInstanceCache((prevCache) => ({
 				...prevCache,
